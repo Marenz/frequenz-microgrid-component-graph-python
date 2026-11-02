@@ -35,7 +35,11 @@ class ComponentGraphConfig:
                 components.  When this is `True`, the graph will be built even if there
                 are validation errors on the components.
             allow_unconnected_components: Whether to allow unconnected components in the
-                graph, that are not reachable from the root.
+                graph, that are not reachable from the root.  Pass-through components,
+                such as `Relay` and `Hvac`, are left out of formulas, but what is behind
+                them is not.  They never have to be reachable themselves, and neither
+                does an `UnspecifiedComponent` or `UnrecognizedComponent` with no
+                connections.
             allow_unspecified_inverters: Whether to allow untyped inverters in the
                 graph.  When this is `True`, inverters that have
                 `InverterType::Unspecified` will be assumed to be Battery inverters.
@@ -130,6 +134,10 @@ class ComponentGraph(Generic[ComponentT, ConnectionT, ComponentIdT]):
     ) -> None:
         """Initialize this instance.
 
+        An `UnspecifiedComponent` or `UnrecognizedComponent` with a connection makes the
+        graph invalid.  One with no connections stays in the graph, but formulas leave
+        it out.
+
         Args:
             components: The list of components to build the graph with.
             connections: The list of connections between the components.
@@ -159,6 +167,9 @@ class ComponentGraph(Generic[ComponentT, ConnectionT, ComponentIdT]):
         matching_types: Iterable[type[ComponentT]] | type[ComponentT] | None = None,
     ) -> set[ComponentT]:
         """Fetch all components in this graph.
+
+        In `matching_types`, `UnspecifiedComponent` and `UnrecognizedComponent` match
+        each other.
 
         Returns:
             A set of all components in this graph.

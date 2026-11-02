@@ -2,16 +2,8 @@
 
 ## Summary
 
-<!-- Here goes a general summary of what this release is about -->
-
-## Upgrading
-
-<!-- Here goes notes on how to upgrade from previous versions, including deprecations and what they should be replaced with -->
-
-## New Features
-
-<!-- Here goes the main new features and examples or instructions on how to use them -->
+This release updates the [`frequenz-microgrid-component-graph`](https://github.com/frequenz-floss/frequenz-microgrid-component-graph-rs) Rust crate to [v0.6.4](https://github.com/frequenz-floss/frequenz-microgrid-component-graph-rs/releases/tag/v0.6.4). `ComponentGraph` now accepts components of unspecified or unrecognized category that have no connections.
 
 ## Bug Fixes
 
-<!-- Here goes notable bug fixes that are worth a special mention or explanation -->
+- `ComponentGraph` no longer fails to build when an `UnspecifiedComponent` or `UnrecognizedComponent` has no connections. `components()` and `component()` can return such a component, but no formula includes it, even if it is a real device. To find these components, use `components(matching_types=UnspecifiedComponent)`. `ComponentGraph` still raises `InvalidGraphError` if one of these components has a connection.
