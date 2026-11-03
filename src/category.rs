@@ -23,8 +23,9 @@ use pyo3::{exceptions, prelude::*};
 /// `VoltageTransformer`), or cg-only categories no current provider
 /// exposes (`Plc`, `CapacitorBank`, …).
 struct ComponentClasses<'py> {
-    // UNSPECIFIED — every problematic-component subclass collapses
-    // to `cg::Unspecified`.
+    // UNSPECIFIED — these two problematic-component subclasses
+    // collapse to `cg::Unspecified`. `MismatchedCategoryComponent`
+    // is not mapped, so it fails as an unsupported category.
     unspecified_component: Bound<'py, PyAny>,
     unrecognized_component: Bound<'py, PyAny>,
 

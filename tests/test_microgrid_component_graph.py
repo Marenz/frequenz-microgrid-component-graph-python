@@ -441,29 +441,23 @@ def test_component_type_is_accepted(component_type: type[Component]) -> None:
 
 @pytest.mark.parametrize(
     "component_type",
-    [
-        # Map to cg::Unspecified, which the graph rejects up-front.
-        UnspecifiedComponent,
-        UnrecognizedComponent,
-        # Map to cg::Inverter(Unspecified), which the graph also rejects
-        # under the default config (allow_unspecified_inverters=False).
-        UnspecifiedInverter,
-        UnrecognizedInverter,
-    ],
+    [UnspecifiedComponent, UnrecognizedComponent],
 )
-def test_unspecified_component_type_is_rejected(
+def test_connected_unspecified_component_is_rejected(
     component_type: type[Component],
 ) -> None:
-    """Classes whose mapping yields an Unspecified category fail at graph creation.
+    """Classes mapping to cg::Unspecified fail at graph creation when connected.
 
     The category mapping accepts these classes -- so the user-facing
     error is a topology-level one rather than ``Unsupported component
     category`` -- but the underlying crate refuses to construct a
-    graph that contains an Unspecified component or Unspecified
-    inverter.
+    graph that contains an Unspecified component with a connection.
     """
     target = _build_target(component_type, cid=3)
-    with pytest.raises(microgrid_component_graph.InvalidGraphError):
+    with pytest.raises(
+        microgrid_component_graph.InvalidGraphError,
+        match="ComponentCategory not specified",
+    ):
         microgrid_component_graph.ComponentGraph(
             components={
                 GridConnectionPoint(
@@ -479,6 +473,74 @@ def test_unspecified_component_type_is_rejected(
                 ComponentConnection(source=ComponentId(2), destination=ComponentId(3)),
             },
         )
+
+
+@pytest.mark.parametrize(
+    "component_type",
+    [UnspecifiedInverter, UnrecognizedInverter],
+)
+def test_unspecified_inverter_without_connections_is_rejected(
+    component_type: type[Component],
+) -> None:
+    """Classes mapping to cg::Inverter(Unspecified) fail with no connections too.
+
+    The default config has allow_unspecified_inverters=False.
+    """
+    target = _build_target(component_type, cid=3)
+    with pytest.raises(
+        microgrid_component_graph.InvalidGraphError, match="InverterType not specified"
+    ):
+        microgrid_component_graph.ComponentGraph(
+            components={
+                GridConnectionPoint(
+                    id=ComponentId(1),
+                    microgrid_id=MicrogridId(1),
+                    rated_fuse_current=100,
+                ),
+                Meter(id=ComponentId(2), microgrid_id=MicrogridId(1)),
+                target,
+            },
+            connections={
+                ComponentConnection(source=ComponentId(1), destination=ComponentId(2)),
+            },
+        )
+
+
+@pytest.mark.parametrize(
+    "component_type",
+    [UnspecifiedComponent, UnrecognizedComponent],
+)
+def test_unspecified_component_without_connections_is_accepted(
+    component_type: type[Component],
+) -> None:
+    """A component of Unspecified category with no connections stays in the graph.
+
+    The formulas leave it out.
+    """
+    target = _build_target(component_type, cid=3)
+    graph: microgrid_component_graph.ComponentGraph[
+        Component, ComponentConnection, ComponentId
+    ] = microgrid_component_graph.ComponentGraph(
+        components={
+            GridConnectionPoint(
+                id=ComponentId(1),
+                microgrid_id=MicrogridId(1),
+                rated_fuse_current=100,
+            ),
+            Meter(id=ComponentId(2), microgrid_id=MicrogridId(1)),
+            target,
+        },
+        connections={
+            ComponentConnection(source=ComponentId(1), destination=ComponentId(2)),
+        },
+    )
+
+    assert graph.component(ComponentId(3)) == target
+    assert graph.components(matching_types=UnspecifiedComponent) == {target}
+    assert graph.components(matching_types=UnrecognizedComponent) == {target}
+    assert graph.consumer_formula() == "#2"
+    assert graph.grid_formula() == "#2"
+    assert graph.producer_formula() == "0.0"
 
 
 def _pv_graph_with_modes(
